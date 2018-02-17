@@ -1,7 +1,72 @@
 package main
 
+import (
+	"strings"
+	"fmt"
+	"net/http"
+	"io/ioutil"
+	"encoding/json"
+	"time"
+)
 
-type currentConditions struct {
+const baseUrl = "http://api.wunderground.com/api/%s/conditions/q/%s/%s.json"
+
+type weatherUndergroundAPI struct {
+	apiKey string
+	client http.Client
+}
+
+func (w *weatherUndergroundAPI) GetCurrentConditions(city string, state string) (CurrentConditions, error) {
+	url := getUrl(w.apiKey, city, state)
+
+	r,e := w.client.Get(url)
+	if e != nil {
+		return CurrentConditions{}, e
+	}
+
+	defer r.Body.Close()
+	bits, e := ioutil.ReadAll(r.Body)
+	if e != nil {
+		return CurrentConditions{}, e
+	}
+
+	wuCC := wuCurrentConditions{}
+	e = json.Unmarshal(bits, &wuCC)
+	if e != nil {
+		return CurrentConditions{}, e
+	}
+
+	current := CurrentConditions{
+		Temp: wuCC.CurrentObservation.TempF,
+		City: city,
+		State: state,
+		Wind: wuCC.CurrentObservation.WindMph,
+		WindGusts: wuCC.CurrentObservation.WindGustMph,
+		WindDirection: wuCC.CurrentObservation.WindDir,
+		LastUpdated: wuCC.CurrentObservation.ObservationTime,
+	}
+
+	return current, nil
+}
+
+func NewWeatherUndergroundAPI(apiKey string) Weather {
+	wug := weatherUndergroundAPI{
+		apiKey: apiKey,
+		client: http.Client{
+			Timeout: time.Duration(30 * time.Second),
+		},
+	}
+
+	return &wug
+}
+
+func getUrl(key string, city string, state string) string {
+	formattedCity := strings.Replace(city, " ", "_", -1)
+	return fmt.Sprintf(baseUrl, key, formattedCity, state)
+}
+
+
+type wuCurrentConditions struct {
 	Response struct {
 		Version        string `json:"version"`
 		TermsofService string `json:"termsofService"`
@@ -58,7 +123,7 @@ type currentConditions struct {
 		WindString            string  `json:"wind_string"`
 		WindDir               string  `json:"wind_dir"`
 		WindDegrees           int     `json:"wind_degrees"`
-		WindMph               int     `json:"wind_mph"`
+		WindMph               float64     `json:"wind_mph"`
 		WindGustMph           string  `json:"wind_gust_mph"`
 		WindKph               int     `json:"wind_kph"`
 		WindGustKph           string  `json:"wind_gust_kph"`
