@@ -1,9 +1,5 @@
 package main
 
-type Weather interface {
-	GetCurrentConditions(city string, state string) (CurrentConditions, error)
-}
-
 type CurrentConditions struct {
 	City string `json:"city"`
 	State string `json:"state"`

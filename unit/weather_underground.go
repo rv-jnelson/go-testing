@@ -49,7 +49,7 @@ func (w *weatherUndergroundAPI) GetCurrentConditions(city string, state string) 
 	return current, nil
 }
 
-func NewWeatherUndergroundAPI(apiKey string) Weather {
+func NewWeatherUndergroundAPI(apiKey string) *weatherUndergroundAPI {
 	wug := weatherUndergroundAPI{
 		apiKey: apiKey,
 		client: http.Client{
